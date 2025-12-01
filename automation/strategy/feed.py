@@ -1,12 +1,13 @@
-# feed.py
 import random
 import time
 from automation.mouse.move import Move
 from automation.mouse.click import Click
 from automation.mouse.scroll import Scroll
+from playwright.sync_api import Page  # pyright: ignore[reportMissingImports]
+
 
 class Feed:
-    def __init__(self, page):
+    def __init__(self, page: Page):
         """
         Clase que gestiona las interacciones con el feed de Instagram:
         - Click en fotos
@@ -23,10 +24,19 @@ class Feed:
         try:
             box = element.bounding_box()
             if box:
-                Move(self.page).to(box['x'] + box['width']/2, box['y'] + box['height']/2, steps=20)
-                if box['y'] > 600:
-                    Scroll(self.page).down(amount=int(box['y'] - 300))
+                # mover el mouse al centro del elemento
+                Move(self.page).to(
+                    box["x"] + box["width"] / 2,
+                    box["y"] + box["height"] / 2,
+                    steps=20,
+                )
+
+                # si está muy abajo del viewport, scrolleo un poco antes
+                if box["y"] > 600:
+                    Scroll(self.page).down(amount=int(box["y"] - 300))
                     time.sleep(random.uniform(0.2, 0.5))
+
+            # click usando tu wrapper
             Click(self.page).at(element)
             print("📸 Foto clickeada")
             time.sleep(random.uniform(0.5, 1.5))
@@ -34,27 +44,56 @@ class Feed:
             print(f"⚠️ No se pudo clickear la foto: {e}")
 
     # -----------------------------
-    # Dar like a una foto
+    # Dar like a una foto / post
     # -----------------------------
-    def like_photo(self, photo_element):
-        """Intenta darle like a la foto usando XPath relativo y verificando fill"""
+    def like_photo(self):
+        """
+        Intenta darle like al post visible.
+        Usa el nombre/label 'Me gusta' (aria-label) del icono de corazón.
+        No depende de clases ni XPaths frágiles.
+        """
         try:
-            heart = photo_element.query_selector(
-                ".//div[@role='button']/svg[@aria-label='Me gusta' or @aria-label='Like']"
-            )
-            if heart:
-                fill = heart.get_attribute("fill")
-                if fill == "currentColor":
-                    box = heart.bounding_box()
-                    if box:
-                        Move(self.page).to(box['x'] + box['width']/2, box['y'] + box['height']/2, steps=15)
-                        Click(self.page).at(heart)
-                        print("❤️ Foto likeada")
-                        time.sleep(random.uniform(0.5, 1.2))
-                else:
-                    print("ℹ️ Foto ya estaba likeada")
+            # 1) Buscar por label accesible (aria-label="Me gusta")
+            heart_locator = self.page.get_by_label("Me gusta")
+
+            if heart_locator.count() == 0:
+                # 2) Fallback: buscar por CSS directo sobre el SVG
+                heart_locator = self.page.locator(
+                    "svg[aria-label='Me gusta'], svg[aria-label='Like']"
+                )
+
+            if heart_locator.count() == 0:
+                print("⚠️ No se encontró el botón/corazón 'Me gusta'.")
+                return
+
+            heart = heart_locator.first
+
+            if not heart.is_visible():
+                print("⚠️ El corazón 'Me gusta' no está visible.")
+                return
+
+            # Evitar relike: si el aria-label indica que ya está likeado
+            aria = heart.get_attribute("aria-label") or ""
+            if "Ya no" in aria or "Unlike" in aria:
+                print("💡 El post ya estaba likeado.")
+                return
+
+            box = heart.bounding_box()
+            if box:
+                # mover al corazón y clickear con tu wrapper
+                Move(self.page).to(
+                    box["x"] + box["width"] / 2,
+                    box["y"] + box["height"] / 2,
+                    steps=15,
+                )
+                Click(self.page).at(heart)
             else:
-                print("⚠️ No se encontró el corazón de like en la foto.")
+                # fallback simple
+                heart.click()
+
+            print("❤️ Foto likeada")
+            time.sleep(random.uniform(0.5, 1.2))
+
         except Exception as e:
             print(f"⚠️ Error al dar like: {e}")
 
@@ -62,17 +101,26 @@ class Feed:
     # Click en foto aleatoria del feed
     # -----------------------------
     def click_random_photo(self):
-        """Clickea una foto aleatoria del feed y le da like"""
-        photo_selector = "article img"
-        photos = self.page.query_selector_all(photo_selector)
-        if not photos:
-            print("⚠️ No se encontraron fotos.")
-            return
+        """
+        Clickea una foto aleatoria del feed y le da like.
+        Primero busca <article> img, luego intenta likear el post.
+        """
+        try:
+            photo_selector = "article img"
+            photos = self.page.query_selector_all(photo_selector)
+            if not photos:
+                print("⚠️ No se encontraron fotos.")
+                return
 
-        photo = random.choice(photos)
-        self.click_element(photo)
-        self.like_photo(photo)
-        time.sleep(random.uniform(1, 3))
+            photo = random.choice(photos)
+            self.click_element(photo)
+
+            # Dar like usando el label "Me gusta"
+            self.like_photo()
+
+            time.sleep(random.uniform(1, 3))
+        except Exception as e:
+            print(f"⚠️ Error al procesar foto aleatoria: {e}")
 
     # -----------------------------
     # Scroll humano lento alternando down/up
