@@ -1,0 +1,75 @@
+# === Entorno virtual ===
+venv/
+.env/
+.env.bak
+.env.local
+.venv/
+venv.bak/
+
+# === Archivos de Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.log
+*.sqlite3
+*.db
+
+# === Archivos temporales y cache ===
+*.tmp
+*.temp
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
+*.lock
+
+# === Archivos de VSCode / IDE ===
+.vscode/
+.idea/
+*.code-workspace
+
+# === Archivos de ejecución o sesiones ===
+session.json
+*.session
+*.pid
+
+# === Logs y capturas ===
+logs/
+*.log
+output/
+screenshots/
+reports/
+
+# === Playwright / Pytest / Coverage ===
+.playwright/
+pytest_cache/
+coverage/
+htmlcov/
+.coverage
+.tox/
+.nox/
+dist/
+build/
+
+# === Archivos específicos del proyecto ===
+chrome_profile/
+__results__/
+__output__/
+test-results/
+automation/__pycache__/
+scraper/__pycache__/
+utils/__pycache__/
+
+# === Archivos generados por instalación ===
+*.egg-info/
+*.egg/
+.eggs/
+pip-wheel-metadata/
+*.whl
+
+# === Archivos del sistema operativo ===
+ehthumbs.db
+Icon?
+desktop.ini
